@@ -58,11 +58,22 @@ h1{font-size:1.2rem;margin:0 0 .8rem;letter-spacing:.1em}
 /* 問題の一覧 */
 .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.2rem,1fr));gap:.35rem}
 .pcell{border:1px solid var(--rule);border-radius:5px;padding:.25rem .3rem;text-align:center;background:#fff;cursor:pointer;font-size:.82rem}
-.pcell b{display:block;font-size:.95rem}.pcell .hist{letter-spacing:.05em}
+.pcell{position:relative}.pcell b{display:block;font-size:.95rem}.pcell .seq{position:absolute;top:1px;left:4px;font-size:.62rem;color:var(--sub)}.pcell .hist{letter-spacing:.05em}
 .pcell.o{border-color:var(--ok);background:#EEF6F0}.pcell.t{border-color:var(--mid);background:#FBF3E2}.pcell.x{border-color:var(--ng);background:#F9E7EA}
 .mk-o{color:var(--ok)}.mk-t{color:var(--mid)}.mk-x{color:var(--ng)}
 .chips{display:flex;flex-wrap:wrap;gap:.3rem}
 .chips label{font-size:.82rem;border:1px solid var(--rule);border-radius:12px;padding:.05rem .55rem;background:#fff}
+.clock{text-align:center;margin:.4rem 0}.clock b{font-size:1.5rem;font-variant-numeric:tabular-nums}.clock span{display:block;font-size:.78rem;color:var(--sub)}
+.clock.over b{color:var(--ng)}.clock.paused b{color:var(--sub)}.paused-card{opacity:.45}
+.lrow{display:grid;grid-template-columns:minmax(6rem,1.2fr) auto 1fr auto;gap:.3rem .6rem;align-items:center;padding:.3rem 0;border-bottom:1px dashed var(--rule);font-size:.86rem}
+.lrow .fbar{min-width:4rem}.lv-n{font-weight:700;font-variant-numeric:tabular-nums}.lv-s{font-size:.75rem;color:var(--sub)}
+.lrange{padding:.35rem 0;border-bottom:1px dashed var(--rule)}
+.lv{font-size:.72rem;border-radius:3px;padding:0 .35rem;margin-left:.3rem;white-space:nowrap}
+.lv-good,.lvc-完成{background:#E2EFE6;color:#2F6E44}.lvc-定着{background:#EAF2EC;color:#3D8A5A}.lvc-不安定{background:#FBF3E2;color:#8A5A00}.lv-bad,.lvc-苦手{background:#F9E7EA;color:#B3283C}.lvc-未着手{background:#F1EEE7;color:var(--sub)}
+.lvbar{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.5rem}.lv-b{border:1px solid var(--rule);border-radius:12px;padding:.1rem .6rem;cursor:pointer;font-size:.8rem}
+.lv-b[aria-pressed="true"]{outline:2px solid var(--ink)}
+.seq2{font-size:.66rem;color:var(--sub);margin-right:.3rem}
+.panel-h select{font-size:.8rem;font-weight:400;border:1px solid var(--rule);border-radius:4px;padding:.1rem .3rem;background:#fff}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#FBF9F4;border-top:1px solid var(--rule);display:flex;padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;border:none;background:none;padding:.8rem 0;cursor:pointer;color:var(--sub);font-weight:700}
 nav.tabs button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--ink)}
@@ -74,11 +85,13 @@ body.embed nav.tabs{position:static;border:none;background:none;margin-bottom:.4
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="range" aria-selected="true">範囲</button>
     <button role="tab" data-view="test" aria-selected="false">テスト</button>
+    <button role="tab" data-view="look" aria-selected="false">見る</button>
     <button role="tab" data-view="probs" aria-selected="false">問題</button>
     <button role="tab" data-view="settings" aria-selected="false">設定</button>
   </nav>
   <section class="view" id="view-range"><div id="range"></div></section>
   <section class="view" id="view-test" hidden><div id="test"></div></section>
+  <section class="view" id="view-look" hidden><div id="look"></div></section>
   <section class="view" id="view-probs" hidden><div id="probs"></div></section>
   <section class="view" id="view-settings" hidden>
     <h1>設定</h1>
@@ -95,7 +108,7 @@ body.embed nav.tabs{position:static;border:none;background:none;margin-bottom:.4
 <script>
 (function(){
 "use strict";
-const APP_VERSION = "2026-10-06 r1";
+const APP_VERSION = "2026-10-07 r3";
 const DATA = "roadmap/apps/math-range/data.json";
 const KEY_CONN = "mr-conn", KEY_CACHE = "mr-cache";
 const MARKS = ["○", "△", "×"], SCORE = { "○": 1, "△": 0.5, "×": 0 }, CLS = { "○": "o", "△": "t", "×": "x" };
@@ -159,17 +172,35 @@ async function commit(mutate){
 const D = () => state.doc;
 const book = id => D().books.find(b => b.id === id);
 const field = id => D().fields.find(f => f.id === id);
-// 番号として数えるのは数字だけの番号。「例題3」などは名前として扱う(範囲が最初から最後までのときだけ入る)
-const num = no => /^\s*\d+(\.\d+)?\s*$/.test(String(no)) ? +String(no).trim() : NaN;
-const byNo = (a, b) => { const x = num(a.no), y = num(b.no);
-  if (!isNaN(x) && !isNaN(y)) return x - y; if (!isNaN(x)) return -1; if (!isNaN(y)) return 1;
-  return String(a.no).localeCompare(String(b.no), "ja", { numeric: true }); };
+// 問題の並べ方:名前の中の数字を数として並べる(例1-2 の次は 例1-3、例1-10 はそのあと)
+const byNo = (a, b) => String(a.no).localeCompare(String(b.no), "ja", { numeric: true });
 function history(pid){ return D().tests.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).filter(t => t.results[pid]).map(t => ({ mark: t.results[pid], date: t.date })); }
 const latest = pid => { const h = history(pid); return h.length ? h[h.length - 1].mark : null; };
-function rangeProblems(r){
-  const lo = r.from === "" || r.from == null ? -Infinity : +r.from, hi = r.to === "" || r.to == null ? Infinity : +r.to;
-  return D().problems.filter(p => p.book === r.book && !p.deleted && (isNaN(num(p.no)) ? (lo === -Infinity && hi === Infinity) : (num(p.no) >= lo && num(p.no) <= hi))).sort(byNo);
+// 教材の問題を並べた順の通し番号(1、2、3…)
+const bookProblems = bk => D().problems.filter(p => p.book === bk && !p.deleted).sort(byNo);
+const seqOf = p => bookProblems(p.book).findIndex(x => x.id === p.id) + 1;
+// 「1-10, 15, 20-25」を通し番号の並びに
+function parseSeq(t, max){
+  const out = new Set();
+  String(t || "").split(/[、,,\s]+/).filter(Boolean).forEach(x => { const m = /^(\d+)\s*[-〜~]\s*(\d+)$/.exec(x);
+    if (m) { for (let i = Math.min(+m[1], +m[2]); i <= Math.max(+m[1], +m[2]); i++) if (i >= 1 && i <= max) out.add(i); }
+    else if (/^\d+$/.test(x) && +x >= 1 && +x <= max) out.add(+x); });
+  return Array.from(out).sort((a, b) => a - b);
 }
+// 通し番号の並びを「1-10, 15」のように短く
+function seqText(nums){ const out = []; let a = null, b = null;
+  nums.forEach(n => { if (a == null) { a = b = n; } else if (n === b + 1) b = n; else { out.push(a === b ? a : a + "-" + b); a = b = n; } });
+  if (a != null) out.push(a === b ? a : a + "-" + b); return out.join(", "); }
+// 範囲:決めたときの問題で固定(あとから問題を足してもずれない)
+function rangeProblems(r){
+  const ps = bookProblems(r.book);
+  if (Array.isArray(r.ids)) { const set = new Set(r.ids); return ps.filter(p => set.has(p.id)); }
+  let a = 0, z = ps.length - 1;
+  if (r.fromId) { const i = ps.findIndex(p => p.id === r.fromId); if (i >= 0) a = i; }
+  if (r.toId) { const i = ps.findIndex(p => p.id === r.toId); if (i >= 0) z = i; }
+  return a <= z ? ps.slice(a, z + 1) : ps.slice(z, a + 1);
+}
+const rangeText = r => seqText(rangeProblems(r).map(seqOf));
 function stats(ps){
   const c = { "○": 0, "△": 0, "×": 0, none: 0 }; let sum = 0, n = 0;
   ps.forEach(p => { const m = latest(p.id); if (m) { c[m]++; sum += SCORE[m]; n++; } else c.none++; });
@@ -190,25 +221,34 @@ function segHtml(s){
 
 /* ───── 範囲 ───── */
 const MODES = [["all", "すべて"], ["new", "まだの問題"], ["weak", "苦手(×△)"], ["rand", "ランダム10題"]];
+const KEY_SESSION = "mr-session";
+const fmtSec = sec => { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); };
+const nowMs = () => window.__mrNow ? window.__mrNow() : Date.now();
+function saveSession(){ lsSet(KEY_SESSION, state.session); }
 function rangeCard(r){
   const ps = rangeProblems(r), s = stats(ps), b = book(r.book) || {}, mode = state.mode[r.id] || "weak";
   const weak = ps.filter(p => ["×", "△"].includes(latest(p.id)));
   const fs = fieldStats(ps).filter(x => x.n);
-  return '<div class="range-card" data-range="' + r.id + '"><h3><span>' + esc(r.name || b.name) + "</span><small>" + esc(b.name || "") + (r.from !== "" || r.to !== "" ? " " + esc(r.from) + "〜" + esc(r.to) : "") + " ・ " + ps.length + "題</small></h3>" +
+  return '<div class="range-card" data-range="' + r.id + '"><h3><span>' + esc(r.name || b.name) + "</span><small>" + esc(b.name || "") + " " + esc(rangeText(r)) + " ・ " + ps.length + "題</small></h3>" +
     segHtml(s) +
     (weak.length ? '<div style="margin-top:.4rem;font-size:.82rem">苦手:' + weak.map(p => '<span class="mk-' + CLS[latest(p.id)] + '">' + esc(p.no) + "</span>").join(" ") + "</div>" : "") +
     (fs.length ? '<div class="fields">' + fs.slice(0, 6).map(x => "<span>" + esc(x.name) + '</span><span class="fbar"><i style="width:' + Math.round(x.rate * 100) + '%"></i></span><span>' + pct(x.rate) + "</span>").join("") + "</div>" : "") +
     '<div class="modes" role="group" aria-label="出し方">' + MODES.map(([k, l]) => '<button type="button" data-mode="' + r.id + ":" + k + '" aria-pressed="' + (mode === k) + '">' + l + "</button>").join("") + "</div>" +
-    '<div class="row" style="margin-top:.5rem"><button type="button" class="btn" data-start="' + r.id + '">テストを始める</button>' +
+    '<div class="row" style="margin-top:.5rem"><select data-time="' + r.id + '" aria-label="時間">' + [["none", "時間なし"], ["watch", "時間を測る"], ["per:3", "1題3分"], ["per:5", "1題5分"], ["per:10", "1題10分"], ["all:30", "全体30分"], ["all:60", "全体60分"]]
+      .map(([k, l]) => '<option value="' + k + '"' + ((state.time || {})[r.id] === k ? " selected" : "") + ">" + l + "</option>").join("") + "</select>" +
+    '<button type="button" class="btn" data-start="' + r.id + '">テストを始める</button>' +
     '<button type="button" class="linkbtn" data-range-del="' + r.id + '" style="margin-left:auto;color:var(--sub)">この範囲を消す</button></div></div>';
 }
 function rangeForm(){
   const books = D().books;
   if (!books.length) return '<div class="empty">まず「問題」のタブで教材と問題を足してください。</div>';
-  return '<div class="grid2"><div class="f"><label>教材</label><select id="rf-book">' + books.map(b => '<option value="' + b.id + '">' + esc(b.name) + "</option>").join("") + "</select></div>" +
-    '<div class="f"><label>番号(から)</label><input id="rf-from" type="number" placeholder="空なら最初から"></div><div class="f"><label>番号(まで)</label><input id="rf-to" type="number" placeholder="空なら最後まで"></div>' +
+  const bk = state.rfBook && book(state.rfBook) ? state.rfBook : books[0].id, ps = bookProblems(bk);
+  const pick = parseSeq(state.rfSeq || "", ps.length);
+  return '<div class="grid2"><div class="f"><label>教材</label><select id="rf-book">' + books.map(b => '<option value="' + b.id + '"' + (b.id === bk ? " selected" : "") + ">" + esc(b.name) + "</option>").join("") + "</select></div>" +
+    '<div class="f"><label>通し番号(1〜' + ps.length + '。例:1-10, 15, 20-25)</label><input id="rf-seq" value="' + esc(state.rfSeq || "") + '" placeholder="空なら全部"></div>' +
     '<div class="f"><label>名前</label><input id="rf-name" placeholder="' + esc(ctx.label || "例:2学期の範囲") + '" value="' + esc(ctx.label || "") + '"></div></div>' +
-    '<div class="row" style="margin-top:.5rem"><button type="button" class="btn sm" id="rf-add">範囲を作る</button></div>';
+    (ps.length ? '<div class="empty" style="margin-top:.35rem">' + (pick.length ? pick.length + "題:" + pick.slice(0, 12).map(n => esc(ps[n - 1].no)).join("、") + (pick.length > 12 ? " …" : "") : "全部(" + ps.length + "題)") + "</div>" +
+      '<div class="row" style="margin-top:.5rem"><button type="button" class="btn sm" id="rf-add">範囲を作る</button></div>' : '<div class="empty" style="margin-top:.4rem">この教材にはまだ問題がありません。</div>');
 }
 function renderRange(){
   const box = document.getElementById("range");
@@ -230,16 +270,40 @@ function startTest(rid){
   if (mode === "weak") pool.sort((a, b) => (latest(a.id) === "×" ? 0 : 1) - (latest(b.id) === "×" ? 0 : 1) || byNo(a, b));
   if (mode === "rand") { const a = ps.slice(), out = []; while (a.length && out.length < 10) out.push(a.splice(rnd(a.length), 1)[0]); pool = out; }
   if (!pool.length) { say(mode === "weak" ? "苦手な問題はありません。" : mode === "new" ? "まだの問題はありません。" : "問題がありません。", true); return; }
-  state.session = { rid, queue: pool.map(p => p.id), i: 0, results: {} };
-  say(""); show("test");
+  const tm = (state.time || {})[rid] || "none", [tk, tv] = tm.split(":");
+  state.session = { rid, mode, queue: pool.map(p => p.id), i: 0, results: {}, times: {}, timeouts: {},
+    timing: tk, limit: tv ? +tv * 60 : null, total: 0, cur: 0, last: nowMs(), paused: false };
+  saveSession(); say(""); show("test"); startClock();
+}
+
+// 時計:1秒ごとに今の問題と全体の時間を進める(一時停止中は止める)
+function tickClock(){
+  const s = state.session; if (!s || s.paused) return;
+  const n = nowMs(), dt = (n - s.last) / 1000; s.last = n; s.total += dt; s.cur += dt;
+  if (s.timing === "all" && s.limit && s.total >= s.limit) { finishTest(); return; }
+  saveSession();
+  const el = document.getElementById("clock"); if (el) el.outerHTML = clockHtml(s);
+}
+function startClock(){ clearInterval(state.clock); state.clock = setInterval(tickClock, 1000); }
+function clockHtml(s){
+  if (s.timing === "none") return '<div id="clock"></div>';
+  const over = s.timing === "per" && s.limit && s.cur >= s.limit;
+  const main = s.timing === "per" ? (over ? "時間切れ " + fmtSec(s.cur - s.limit) + "超過" : "残り " + fmtSec(s.limit - s.cur)) : s.timing === "all" ? "残り " + fmtSec(s.limit - s.total) : fmtSec(s.cur);
+  return '<div id="clock" class="clock' + (over ? " over" : "") + (s.paused ? " paused" : "") + '"><b>' + main + "</b><span>全体 " + fmtSec(s.total) + (s.paused ? "・一時停止中" : "") + "</span></div>";
+}
+function recordAnswer(mark){
+  const s = state.session, pid = s.queue[s.i];
+  if (mark) { s.results[pid] = mark; s.times[pid] = Math.round(s.cur); if (s.timing === "per" && s.limit && s.cur >= s.limit) s.timeouts[pid] = true; }
+  s.i++; s.cur = 0; s.last = nowMs(); saveSession();
 }
 async function finishTest(){
   const s = state.session; if (!s) return;
-  state.session = null;                         // 先に閉じる(保存のあとの描き直しで、もう一度終えないように)
+  state.session = null; clearInterval(state.clock); lsSet(KEY_SESSION, null);   // 先に閉じる(保存のあとの描き直しで、もう一度終えないように)
   const n = Object.keys(s.results).length;
   if (n) {
     const id = uid(), r = D().ranges.find(x => x.id === s.rid) || {};
-    const t = { id, date: today(), name: (r.name || "テスト") + " " + (D().tests.filter(x => x.range === s.rid).length + 1) + "回目", range: s.rid, results: s.results };
+    const t = { id, date: today(), name: (r.name || "テスト") + " " + (D().tests.filter(x => x.range === s.rid).length + 1) + "回目", range: s.rid, results: s.results,
+      times: s.times, timeouts: s.timeouts, total: Math.round(s.total), timing: s.timing, limit: s.limit };
     await commit(doc => { doc.tests.push(t); });
     state.lastTest = id;
   }
@@ -250,20 +314,66 @@ function renderTest(){
   if (s) {
     if (s.i >= s.queue.length) { box.innerHTML = '<p class="prog">保存しています…</p>'; return; }
     const p = D().problems.find(x => x.id === s.queue[s.i]), b = book(p.book) || {}, h = history(p.id);
-    box.innerHTML = '<div class="panel"><div class="qcard"><div class="qbook">' + esc(b.name) + '</div><div class="qno">' + esc(p.no) + "</div>" +
+    box.innerHTML = clockHtml(s) + '<div class="panel' + (s.paused ? " paused-card" : "") + '"><div class="qcard"><div class="qbook">' + esc(b.name) + " ・ " + seqOf(p) + '</div><div class="qno">' + esc(p.no) + "</div>" +
       '<div class="qfields">' + (p.fields || []).map(f => '<span class="tag">' + esc((field(f) || {}).name) + "</span>").join("") + "</div>" +
       (h.length ? '<div class="qbook">これまで ' + h.slice(-5).map(x => '<span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join(" ") + "</div>" : '<div class="qbook">はじめて</div>') +
       '<div class="judge"><button type="button" class="o" data-judge="○">○<small>解けた</small></button><button type="button" class="t" data-judge="△">△<small>あと一歩</small></button><button type="button" class="x" data-judge="×">×<small>方針が立たない</small></button></div></div></div>' +
-      '<p class="prog">' + (s.i + 1) + " / " + s.queue.length + '</p><div class="row" style="justify-content:center"><button type="button" class="btn ghost sm" data-skip>とばす</button><button type="button" class="btn ghost sm" data-stop>ここで終える</button></div>';
+      '<p class="prog">' + (s.i + 1) + " / " + s.queue.length + "</p>" +
+      '<div class="row" style="justify-content:center"><button type="button" class="btn ghost sm" data-skip>とばす</button>' +
+      '<button type="button" class="btn ghost sm" data-pause>' + (s.paused ? "再開" : "一時停止") + '</button><button type="button" class="btn ghost sm" data-suspend>中断(あとで続ける)</button>' +
+      '<button type="button" class="btn ghost sm" data-stop>ここで終える</button><button type="button" class="btn ghost sm" data-quit style="border-color:var(--ng);color:var(--ng)">テストをやめる</button></div>';
     return;
   }
+  const held = lsGet(KEY_SESSION, null);
+  const heldHtml = held && held.queue && held.i < held.queue.length ? '<div class="panel"><div class="panel-h">中断しているテスト</div><div class="panel-b">' + esc((D().ranges.find(r => r.id === held.rid) || {}).name || "") +
+    " ・ " + held.i + " / " + held.queue.length + "題まで ・ 全体 " + fmtSec(held.total) + '<div class="row" style="margin-top:.4rem"><button type="button" class="btn sm" data-resume>続ける</button><button type="button" class="btn ghost sm" data-discard>やめる</button></div></div></div>' : "";
   const last = state.lastTest && D().tests.find(t => t.id === state.lastTest);
   const sum = t => { const c = { "○": 0, "△": 0, "×": 0 }; Object.values(t.results).forEach(m => c[m]++); return c; };
-  box.innerHTML = (last ? '<div class="panel"><div class="panel-h">終わったテスト</div><div class="panel-b"><b>' + esc(last.name) + "</b>" +
+  box.innerHTML = heldHtml + (last ? '<div class="panel"><div class="panel-h">終わったテスト</div><div class="panel-b"><b>' + esc(last.name) + "</b>" +
       (c => '<div class="legend" style="margin-top:.3rem"><span><b class="mk-o">○</b> ' + c["○"] + '</span><span><b class="mk-t">△</b> ' + c["△"] + '</span><span><b class="mk-x">×</b> ' + c["×"] + "</span></div>")(sum(last)) + "</div></div>" : "") +
     '<div class="panel"><div class="panel-h">これまでのテスト</div><div class="panel-b">' + (D().tests.length ? D().tests.slice().reverse().slice(0, 30).map(t => { const c = sum(t);
       return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--rule);padding:.25rem 0;font-size:.86rem"><span>' + esc(t.date.slice(5).replace("-", "/")) + " " + esc(t.name) + '</span><span><span class="mk-o">○' + c["○"] + '</span> <span class="mk-t">△' + c["△"] + '</span> <span class="mk-x">×' + c["×"] + "</span></span></div>"; }).join("")
       : '<div class="empty">まだありません。範囲のタブから始めます。</div>') + "</div></div>";
+}
+
+
+/* ───── 見る:分野・範囲・問題の練度を一覧で ───── */
+const LV = ["完成", "定着", "不安定", "苦手", "未着手"];
+function levelOf(pid){
+  const h = history(pid); if (!h.length) return "未着手";
+  const last = h[h.length - 1].mark;
+  if (last === "×") return "苦手";
+  if (last === "△") return "不安定";
+  const tail = h.slice(-3);
+  if (tail.length === 3 && tail.every(x => x.mark === "○") && (Date.parse(tail[2].date) - Date.parse(tail[0].date)) >= 7 * 864e5) return "完成";
+  if (h.length >= 2 && h[h.length - 2].mark === "○") return "定着";
+  return h.length >= 2 ? "不安定" : "定着";
+}
+function avgTime(pid){ const ts = D().tests.map(t => (t.times || {})[pid]).filter(x => x != null); return ts.length ? ts.reduce((a, b) => a + b, 0) / ts.length : null; }
+function renderLook(){
+  const box = document.getElementById("look"), all = D().problems.filter(p => !p.deleted);
+  // 分野
+  const fs = fieldStats(all).filter(x => x.all);
+  const ftime = fid => { const ps = all.filter(p => (p.fields || []).includes(fid)), ts = ps.map(p => avgTime(p.id)).filter(x => x != null); return ts.length ? ts.reduce((a, b) => a + b, 0) / ts.length : null; };
+  const fRow = x => { const tag = x.rate == null ? "" : x.n >= 3 && x.rate >= 0.8 ? '<span class="lv lv-good">得意</span>' : x.n >= 2 && x.rate < 0.5 ? '<span class="lv lv-bad">苦手</span>' : "";
+    return '<div class="lrow"><span class="ln">' + esc(x.name) + tag + '</span><span class="fbar"><i style="width:' + (x.rate == null ? 0 : Math.round(x.rate * 100)) + '%"></i></span><span class="lv-n">' + pct(x.rate) + '</span><span class="lv-s">' + x.n + "/" + x.all + "題" + (ftime(x.f) != null ? "・平均 " + fmtSec(ftime(x.f)) : "") + "</span></div>"; };
+  // 範囲
+  const rs = D().ranges.filter(r => !r.deleted);
+  const rRow = r => { const st = stats(rangeProblems(r)), lastT = D().tests.filter(t => t.range === r.id).map(t => t.date).sort().pop();
+    return '<div class="lrange"><div class="row" style="justify-content:space-between"><b>' + esc(r.name) + '</b><span class="lv-s">' + esc((book(r.book) || {}).name || "") + " " + esc(rangeText(r)) + (lastT ? " ・ 最後 " + esc(lastT.slice(5).replace("-", "/")) : " ・ まだ") + "</span></div>" + segHtml(st) + "</div>"; };
+  // 問題の練度
+  const lvSel = state.lookLv || "", bkSel = state.lookBook || "";
+  const items = all.filter(p => (!bkSel || p.book === bkSel)).map(p => ({ p, lv: levelOf(p.id), h: history(p.id), t: avgTime(p.id) }))
+    .filter(x => !lvSel || x.lv === lvSel).sort((a, b) => LV.indexOf(b.lv) - LV.indexOf(a.lv) || a.p.book.localeCompare(b.p.book) || byNo(a.p, b.p));
+  const cnt = {}; all.filter(p => !bkSel || p.book === bkSel).forEach(p => { const l = levelOf(p.id); cnt[l] = (cnt[l] || 0) + 1; });
+  box.innerHTML = "<h1>見る</h1>" +
+    '<div class="panel"><div class="panel-h"><span>分野(正答率の低い順)</span></div><div class="panel-b">' + (fs.length ? fs.map(fRow).join("") : '<div class="empty">分野の付いた問題がまだありません。</div>') + "</div></div>" +
+    '<div class="panel"><div class="panel-h"><span>範囲</span></div><div class="panel-b">' + (rs.length ? rs.map(rRow).join("") : '<div class="empty">まだ範囲がありません。</div>') + "</div></div>" +
+    '<div class="panel"><div class="panel-h"><span>問題ごとの練度</span><select id="lk-book"><option value="">すべての教材</option>' + D().books.map(b => '<option value="' + b.id + '"' + (b.id === bkSel ? " selected" : "") + ">" + esc(b.name) + "</option>").join("") + "</select></div>" +
+      '<div class="panel-b"><div class="lvbar">' + LV.map(l => '<button type="button" data-lv="' + l + '" aria-pressed="' + (lvSel === l) + '" class="lv-b lvc-' + l + '">' + l + " " + (cnt[l] || 0) + "</button>").join("") + "</div>" +
+      (items.length ? items.map(x => '<div class="lrow"><span class="ln"><small class="seq2">' + seqOf(x.p) + "</small>" + esc(x.p.no) + '<span class="lv-s"> ' + esc((book(x.p.book) || {}).name || "") + "</span></span>" +
+        '<span class="lv lvc-' + x.lv + '">' + x.lv + '</span><span class="hist">' + (x.h.slice(-6).map(y => '<span class="mk-' + CLS[y.mark] + '">' + y.mark + "</span>").join("") || "—") + '</span><span class="lv-s">' + (x.t != null ? "平均 " + fmtSec(x.t) : "") + "</span></div>").join("")
+        : '<div class="empty">当てはまる問題はありません。</div>') + "</div></div>";
 }
 
 /* ───── 問題 ───── */
@@ -277,8 +387,8 @@ function renderProbs(){
       '<input id="pb-newbook" placeholder="新しい教材の名前" style="flex:1;min-width:10rem;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem"><button type="button" class="btn sm" id="pb-addbook">教材を足す</button></div></div></div>' +
     (b ? '<div class="panel"><div class="panel-h"><span>' + esc(b.name) + " ・ " + ps.length + '題</span></div><div class="panel-b">' +
       (ps.length ? '<div class="plist">' + ps.map(p => { const h = history(p.id), m = h.length ? h[h.length - 1].mark : null;
-        return '<button type="button" class="pcell' + (m ? " " + CLS[m] : "") + '" data-prob="' + p.id + '"><b>' + esc(p.no) + '</b><span class="hist">' + (h.slice(-3).map(x => '<span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join("") || "—") + "</span></button>"; }).join("") + "</div>" : '<div class="empty">まだ問題がありません。</div>') +
-      '<div class="row" style="margin-top:.7rem"><input id="pb-nos" placeholder="番号(例:1-40、41、例題3)" style="flex:1;min-width:10rem;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem">' +
+        return '<button type="button" class="pcell' + (m ? " " + CLS[m] : "") + '" data-prob="' + p.id + '"><small class="seq">' + (ps.indexOf(p) + 1) + "</small><b>" + esc(p.no) + '</b><span class="hist">' + (h.slice(-3).map(x => '<span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join("") || "—") + "</span></button>"; }).join("") + "</div>" : '<div class="empty">まだ問題がありません。</div>') +
+      '<div class="row" style="margin-top:.7rem"><input id="pb-nos" placeholder="例:1-40、例1-1〜例1-12、例題3" style="flex:1;min-width:10rem;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem">' +
       '<button type="button" class="btn sm" id="pb-addprobs">問題を足す</button></div>' +
       '<div class="empty" style="margin-top:.3rem">分野を付けて足すなら、下で分野を選んでから「問題を足す」。</div><div class="chips" id="pb-addfields" style="margin-top:.3rem">' + D().fields.map(f => '<label><input type="checkbox" value="' + f.id + '"> ' + esc(f.name) + "</label>").join("") + "</div></div></div>" : "") +
     (sp ? '<div class="panel"><div class="panel-h"><span>' + esc((book(sp.book) || {}).name) + " " + esc(sp.no) + '</span><button type="button" class="linkbtn" data-prob-close>閉じる</button></div><div class="panel-b">' +
@@ -288,40 +398,58 @@ function renderProbs(){
     '<div class="panel"><div class="panel-h">分野・形式</div><div class="panel-b"><div class="chips">' + (D().fields.map(f => '<span class="tag">' + esc(f.name) + "</span>").join("") || '<span class="empty">まだありません。</span>') + "</div>" +
       '<div class="row" style="margin-top:.5rem"><input id="pb-newfield" placeholder="例:微分・整数・証明" style="flex:1;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem"><button type="button" class="btn sm" id="pb-addfield">分野を足す</button></div></div></div>';
 }
-// 「1-40、41、例題3」を番号の並びに
+// まとめて足す:「1-40」「例1-1〜例1-12」「例1-1〜12」「例題3」を問題の名前の並びに
 function parseNos(t){
   const out = [];
-  String(t).split(/[、,，\s]+/).filter(Boolean).forEach(x => { const m = /^(\d+)\s*[-〜~]\s*(\d+)$/.exec(x); if (m) { for (let i = +m[1]; i <= +m[2] && out.length < 1000; i++) out.push(String(i)); } else out.push(x); });
+  String(t).split(/[、,,\s]+/).filter(Boolean).forEach(x => {
+    let m;
+    if ((m = /^(\d+)\s*[-〜~]\s*(\d+)$/.exec(x))) { for (let i = +m[1]; i <= +m[2] && out.length < 1000; i++) out.push(String(i)); return; }
+    // 名前の最後の数字だけを増やす:例1-1〜例1-12、例1-1〜12
+    if ((m = /^(.*?)(\d+)\s*[〜~]\s*(.*?)(\d+)$/.exec(x)) && (m[3] === "" || m[3] === m[1])) {
+      for (let i = +m[2]; i <= +m[4] && out.length < 1000; i++) out.push(m[1] + i); return; }
+    out.push(x);
+  });
   return out;
 }
 
 /* ───── 描画と操作 ───── */
-function render(){ if (!D()) return; renderRange(); renderTest(); renderProbs(); }
+function render(){ if (!D()) return; renderRange(); renderTest(); renderProbs(); renderLook(); }
 function show(v){
   state.view = v;
   document.querySelectorAll(".view").forEach(el => el.hidden = el.id !== "view-" + v);
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
-  if (D()) { if (v === "test") renderTest(); if (v === "range") renderRange(); if (v === "probs") renderProbs(); }
+  if (D()) { if (v === "test") renderTest(); if (v === "range") renderRange(); if (v === "probs") renderProbs(); if (v === "look") renderLook(); }
 }
 function bind(){
   document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
   document.getElementById("range").addEventListener("click", async e => {
     let b;
     if ((b = e.target.closest("[data-mode]"))) { const [rid, k] = b.dataset.mode.split(":"); state.mode[rid] = k; renderRange(); return; }
+    if ((b = e.target.closest("[data-start]"))) { const sel = document.querySelector('[data-time="' + b.dataset.start + '"]'); state.time = state.time || {}; if (sel) state.time[b.dataset.start] = sel.value; }
     if ((b = e.target.closest("[data-start]"))) { startTest(b.dataset.start); return; }
     if ((b = e.target.closest("[data-range-del]"))) { if (!confirm("この範囲を消しますか。問題とテストの記録は残ります。")) return; const id = b.dataset.rangeDel; await commit(doc => { doc.ranges.find(r => r.id === id).deleted = today(); }); return; }
     if (e.target.id === "rf-add") {
-      const v = id => document.getElementById(id).value.trim(), bk = v("rf-book");
-      const r = { id: uid(), book: bk, from: v("rf-from"), to: v("rf-to"), name: v("rf-name") || (book(bk) || {}).name, created: today() };
+      const v = id => (document.getElementById(id) || {}).value || "", bk = v("rf-book");
+      const ps = bookProblems(bk), nums = parseSeq(v("rf-seq"), ps.length);
+      if (v("rf-seq").trim() && !nums.length) { say("通し番号が読めません(1〜" + ps.length + ")。", true); return; }
+      const r = { id: uid(), book: bk, ids: (nums.length ? nums.map(n => ps[n - 1]) : ps).map(p => p.id), name: v("rf-name").trim() || (book(bk) || {}).name, created: today() };
+      state.rfSeq = "";
       if (ctx.page) Object.assign(r, { page: ctx.page, label: ctx.label, tag: ctx.tag });
       await commit(doc => { doc.ranges.push(r); }); say("範囲を作りました");
     }
   });
+  document.getElementById("range").addEventListener("change", e => { if (e.target.id === "rf-book") { state.rfBook = e.target.value; renderRange(); } });
+  document.getElementById("range").addEventListener("input", e => { if (e.target.id === "rf-seq") { state.rfSeq = e.target.value; const pos = e.target.selectionStart; renderRange(); const el = document.getElementById("rf-seq"); el.focus(); try { el.setSelectionRange(pos, pos); } catch (err) {} } });
   document.getElementById("test").addEventListener("click", async e => {
     const s = state.session; let b;
-    if (s && (b = e.target.closest("[data-judge]"))) { s.results[s.queue[s.i]] = b.dataset.judge; s.i++; if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
-    if (s && e.target.closest("[data-skip]")) { s.i++; if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
-    if (s && e.target.closest("[data-stop]")) { await finishTest(); return; }
+    if (s && !s.paused && (b = e.target.closest("[data-judge]"))) { tickClock(); recordAnswer(b.dataset.judge); if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
+    if (s && e.target.closest("[data-skip]")) { tickClock(); recordAnswer(null); if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
+    if (s && e.target.closest("[data-pause]")) { tickClock(); s.paused = !s.paused; s.last = nowMs(); saveSession(); renderTest(); return; }
+    if (s && e.target.closest("[data-suspend]")) { tickClock(); s.paused = true; saveSession(); state.session = null; clearInterval(state.clock); say("中断しました。テストのタブから続けられます。"); renderTest(); return; }
+    if (s && e.target.closest("[data-quit]")) { if (!confirm("テストをやめますか。このテストの判定は記録されません。")) return; state.session = null; clearInterval(state.clock); lsSet(KEY_SESSION, null); say("テストをやめました"); renderTest(); return; }
+    if (s && e.target.closest("[data-stop]")) { tickClock(); await finishTest(); return; }
+    if (!s && e.target.closest("[data-resume]")) { const h = lsGet(KEY_SESSION, null); if (!h) return; h.paused = false; h.last = nowMs(); state.session = h; saveSession(); startClock(); renderTest(); return; }
+    if (!s && e.target.closest("[data-discard]")) { if (!confirm("中断しているテストをやめますか。記録されません。")) return; lsSet(KEY_SESSION, null); renderTest(); return; }
   });
   document.getElementById("probs").addEventListener("change", async e => {
     if (e.target.id === "pb-book") { state.sel.book = e.target.value; state.sel.prob = null; renderProbs(); return; }
@@ -344,6 +472,8 @@ function bind(){
     if (e.target.closest("[data-prob-close]")) { state.sel.prob = null; renderProbs(); return; }
     if (e.target.closest("[data-prob-del]")) { if (!confirm("この問題を消しますか。")) return; const id = state.sel.prob; await commit(doc => { doc.problems.find(p => p.id === id).deleted = today(); }); state.sel.prob = null; renderProbs(); return; }
   });
+  document.getElementById("look").addEventListener("click", e => { const b = e.target.closest("[data-lv]"); if (!b) return; state.lookLv = state.lookLv === b.dataset.lv ? "" : b.dataset.lv; renderLook(); });
+  document.getElementById("look").addEventListener("change", e => { if (e.target.id === "lk-book") { state.lookBook = e.target.value; renderLook(); } });
   document.getElementById("connect").addEventListener("click", async () => {
     const v = id => document.getElementById(id).value.trim();
     state.conn = { owner: v("c-owner"), repo: v("c-repo"), branch: v("c-branch") || "main", token: v("c-token") };
@@ -366,7 +496,7 @@ function boot(){
   if (cache && cache.doc) { state.doc = Object.assign(emptyDoc(), cache.doc); state.sha = cache.sha; render(); }
   if (c && c.token) { state.conn = c; load(); } else show("settings");
 }
-window.__mr = { state, rangeProblems, stats, latest, parseNos };
+window.__mr = { levelOf, parseSeq, seqText, tickClock, state, rangeProblems, stats, latest, parseNos };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
 </script>
