@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>演習範囲</title>
+<meta name="theme-color" content="#F5F1E8">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F5F1E8;--ink:#23201B;--sub:#7A7266;--rule:#DDD5C6;--card:#fff;--ok:#3D8A5A;--mid:#C08A1E;--ng:#B3283C;--none:#C9C2B4;--acc:#2F5D8A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+body{font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;font-size:15px;line-height:1.6;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+body.embed{padding-bottom:0}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:720px;margin:0 auto;padding:1rem}
+h1{font-size:1.2rem;margin:0 0 .8rem;letter-spacing:.1em}
+.view[hidden],[hidden]{display:none !important}
+.panel{border:1px solid var(--rule);border-radius:6px;background:var(--card);margin:.7rem 0;overflow:hidden}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.45rem .75rem;border-bottom:1px solid var(--rule);background:#FAF8F3;font-weight:700;font-size:.88rem}
+.panel-b{padding:.6rem .75rem}
+.empty{color:var(--sub);font-size:.86rem}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:4px;padding:.4rem .9rem;cursor:pointer;font-weight:700}
+.btn.ghost{background:transparent;color:var(--ink)}.btn.sm{padding:.2rem .6rem;font-size:.84rem;font-weight:400}
+.linkbtn{border:none;background:none;color:var(--acc);cursor:pointer;padding:0;font-size:.84rem}
+.row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.f label{display:block;font-size:.76rem;color:var(--sub);margin-bottom:.15rem}
+.f input,.f select{width:100%;border:1px solid var(--rule);border-radius:4px;padding:.4rem .5rem;background:#fff}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem}
+.status{font-size:.84rem;color:var(--sub)}.status.err{color:var(--ng)}
+/* 進み具合の帯:○△×未 */
+.seg{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--none);margin:.35rem 0}
+.seg i{display:block;height:100%}.seg .o{background:var(--ok)}.seg .t{background:var(--mid)}.seg .x{background:var(--ng)}
+.legend{display:flex;gap:.8rem;flex-wrap:wrap;font-size:.8rem;color:var(--sub)}
+.legend b{color:var(--ink)}
+.big{font-size:1.6rem;font-weight:700}
+.range-card{border:1px solid var(--rule);border-radius:6px;padding:.6rem .75rem;margin:.5rem 0;background:#FDFCF9}
+.range-card h3{margin:0;font-size:1rem;display:flex;justify-content:space-between;gap:.5rem}
+.range-card h3 small{font-weight:400;color:var(--sub);font-size:.78rem}
+.fields{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem .6rem;font-size:.82rem;align-items:center;margin-top:.4rem}
+.fbar{height:7px;background:var(--none);border-radius:4px;overflow:hidden}.fbar i{display:block;height:100%;background:var(--acc)}
+.modes{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+.modes button{border:1px solid var(--rule);background:#fff;border-radius:14px;padding:.2rem .7rem;cursor:pointer;font-size:.84rem}
+.modes button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+/* テスト */
+.qcard{text-align:center;padding:1.4rem 1rem}
+.qno{font-size:2.6rem;font-weight:700;line-height:1.2}
+.qbook{color:var(--sub);font-size:.86rem}.qfields{margin:.4rem 0;display:flex;gap:.3rem;justify-content:center;flex-wrap:wrap}
+.tag{font-size:.76rem;border:1px solid var(--rule);border-radius:10px;padding:0 .5rem;background:#fff}
+.judge{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:1rem}
+.judge button{border:2px solid;border-radius:10px;background:#fff;padding:.9rem 0;font-size:1.6rem;font-weight:700;cursor:pointer}
+.judge .o{border-color:var(--ok);color:var(--ok)}.judge .t{border-color:var(--mid);color:var(--mid)}.judge .x{border-color:var(--ng);color:var(--ng)}
+.judge small{display:block;font-size:.7rem;font-weight:400;color:var(--sub)}
+.prog{font-size:.84rem;color:var(--sub);text-align:center}
+/* 問題の一覧 */
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.2rem,1fr));gap:.35rem}
+.pcell{border:1px solid var(--rule);border-radius:5px;padding:.25rem .3rem;text-align:center;background:#fff;cursor:pointer;font-size:.82rem}
+.pcell b{display:block;font-size:.95rem}.pcell .hist{letter-spacing:.05em}
+.pcell.o{border-color:var(--ok);background:#EEF6F0}.pcell.t{border-color:var(--mid);background:#FBF3E2}.pcell.x{border-color:var(--ng);background:#F9E7EA}
+.mk-o{color:var(--ok)}.mk-t{color:var(--mid)}.mk-x{color:var(--ng)}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem}
+.chips label{font-size:.82rem;border:1px solid var(--rule);border-radius:12px;padding:.05rem .55rem;background:#fff}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#FBF9F4;border-top:1px solid var(--rule);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;border:none;background:none;padding:.8rem 0;cursor:pointer;color:var(--sub);font-weight:700}
+nav.tabs button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--ink)}
+body.embed nav.tabs{position:static;border:none;background:none;margin-bottom:.4rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="range" aria-selected="true">範囲</button>
+    <button role="tab" data-view="test" aria-selected="false">テスト</button>
+    <button role="tab" data-view="probs" aria-selected="false">問題</button>
+    <button role="tab" data-view="settings" aria-selected="false">設定</button>
+  </nav>
+  <section class="view" id="view-range"><div id="range"></div></section>
+  <section class="view" id="view-test" hidden><div id="test"></div></section>
+  <section class="view" id="view-probs" hidden><div id="probs"></div></section>
+  <section class="view" id="view-settings" hidden>
+    <h1>設定</h1>
+    <div class="panel"><div class="panel-h">接続</div><div class="panel-b">
+      <p class="empty" style="margin-top:0">行軍表・省アプリと同じトークンが使えます(同じ端末で入れてあれば自動で使います)。</p>
+      <div class="grid2"><div class="f"><label>ユーザー名</label><input id="c-owner"></div><div class="f"><label>リポジトリ</label><input id="c-repo"></div><div class="f"><label>ブランチ</label><input id="c-branch"></div></div>
+      <div class="f" style="margin-top:.4rem"><label>トークン</label><input id="c-token" type="password"></div>
+      <div class="row" style="margin-top:.6rem"><button class="btn" id="connect" type="button">接続して読み込む</button><span class="status" id="conn-status"></span></div>
+    </div></div>
+    <p class="status" id="ver"></p>
+  </section>
+  <span class="status" id="msg"></span>
+</div>
+<script>
+(function(){
+"use strict";
+const APP_VERSION = "2026-10-06 r1";
+const DATA = "roadmap/apps/math-range/data.json";
+const KEY_CONN = "mr-conn", KEY_CACHE = "mr-cache";
+const MARKS = ["○", "△", "×"], SCORE = { "○": 1, "△": 0.5, "×": 0 }, CLS = { "○": "o", "△": "t", "×": "x" };
+const state = { conn: null, doc: null, sha: null, view: "range", sel: { book: null, prob: null }, mode: {}, session: null, lastTest: null };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const lsGet = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch (e) { return fb; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const today = () => window.__mrToday || new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
+const rnd = n => Math.floor((window.__mrRandom ? window.__mrRandom() : Math.random()) * n);
+const say = (t, err) => { const el = document.getElementById("msg"); el.textContent = t; el.classList.toggle("err", !!err); };
+// どの省・ページから開かれたか(省アプリのページに置かれたとき)
+const q = new URLSearchParams(location.search);
+const ctx = { page: q.get("page") || "", label: q.get("label") || "", tag: q.get("tag") || "" };
+const emptyDoc = () => ({ version: 1, books: [], fields: [], problems: [], ranges: [], tests: [] });
+/* ───── GitHub ───── */
+function b64e(str){ const b = new TextEncoder().encode(str); let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); }
+function b64d(b64){ const bin = atob(String(b64).replace(/\s/g, "")); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(u); }
+const repo = () => "https://api.github.com/repos/" + encodeURIComponent(state.conn.owner) + "/" + encodeURIComponent(state.conn.repo);
+const hdr = x => Object.assign({ "Authorization": "Bearer " + state.conn.token, "Accept": "application/vnd.github+json" }, x || {});
+async function fetchRetry(url, opts){ let last; for (let i = 0; i < 3; i++) { try { return await fetch(url, opts); } catch (e) { last = e; await new Promise(r => setTimeout(r, 500 * (i + 1))); } } throw last; }
+function httpErr(st, p){ const e = new Error(st === 401 ? "トークンが無効です。設定から入れ直してください。" : "GitHubとの通信に失敗しました(" + st + " " + p + ")。"); e.status = st; return e; }
+async function readJson(path){
+  const url = repo() + "/contents/" + path + "?ref=" + encodeURIComponent(state.conn.branch);
+  const r = await fetchRetry(url, { headers: hdr(), cache: "no-store" });
+  if (r.status === 404) return { data: null, sha: null };
+  if (!r.ok) throw httpErr(r.status, path);
+  const meta = await r.json();
+  let text = meta.content ? b64d(meta.content) : null;
+  if (text == null) text = await (await fetchRetry(url, { headers: hdr({ "Accept": "application/vnd.github.raw+json" }), cache: "no-store" })).text();
+  return { data: JSON.parse(text), sha: meta.sha };
+}
+async function writeJson(path, obj, sha, msg){
+  const body = { message: msg || "思案を更新", content: b64e(JSON.stringify(obj, null, 1)), branch: state.conn.branch };
+  if (sha) body.sha = sha;
+  const r = await fetchRetry(repo() + "/contents/" + path, { method: "PUT", headers: hdr({ "Content-Type": "application/json" }), body: JSON.stringify(body) });
+  if (!r.ok) throw httpErr(r.status, path);
+  return (await r.json()).content.sha;
+}
+async function load(){
+  if (!state.conn || !state.conn.token) { show("settings"); return false; }
+  try {
+    const r = await readJson(DATA);
+    state.doc = Object.assign(emptyDoc(), r.data || {}); state.sha = r.sha;
+    lsSet(KEY_CACHE, { doc: state.doc, sha: state.sha }); render(); return true;
+  } catch (e) { say(e.message, true); return false; }
+}
+async function commit(mutate){
+  mutate(state.doc); render();
+  for (let i = 0; i < 3; i++) {
+    try { state.sha = await writeJson(DATA, state.doc, state.sha); lsSet(KEY_CACHE, { doc: state.doc, sha: state.sha }); return true; }
+    catch (e) {
+      if ((e.status === 409 || e.status === 422) && i < 2) { const f = await readJson(DATA); state.doc = Object.assign(emptyDoc(), f.data || {}); state.sha = f.sha; mutate(state.doc); render(); continue; }
+      say(e.message, true); return false;
+    }
+  }
+  return false;
+}
+
+/* ───── 数える ───── */
+const D = () => state.doc;
+const book = id => D().books.find(b => b.id === id);
+const field = id => D().fields.find(f => f.id === id);
+// 番号として数えるのは数字だけの番号。「例題3」などは名前として扱う(範囲が最初から最後までのときだけ入る)
+const num = no => /^\s*\d+(\.\d+)?\s*$/.test(String(no)) ? +String(no).trim() : NaN;
+const byNo = (a, b) => { const x = num(a.no), y = num(b.no);
+  if (!isNaN(x) && !isNaN(y)) return x - y; if (!isNaN(x)) return -1; if (!isNaN(y)) return 1;
+  return String(a.no).localeCompare(String(b.no), "ja", { numeric: true }); };
+function history(pid){ return D().tests.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).filter(t => t.results[pid]).map(t => ({ mark: t.results[pid], date: t.date })); }
+const latest = pid => { const h = history(pid); return h.length ? h[h.length - 1].mark : null; };
+function rangeProblems(r){
+  const lo = r.from === "" || r.from == null ? -Infinity : +r.from, hi = r.to === "" || r.to == null ? Infinity : +r.to;
+  return D().problems.filter(p => p.book === r.book && !p.deleted && (isNaN(num(p.no)) ? (lo === -Infinity && hi === Infinity) : (num(p.no) >= lo && num(p.no) <= hi))).sort(byNo);
+}
+function stats(ps){
+  const c = { "○": 0, "△": 0, "×": 0, none: 0 }; let sum = 0, n = 0;
+  ps.forEach(p => { const m = latest(p.id); if (m) { c[m]++; sum += SCORE[m]; n++; } else c.none++; });
+  return { c, total: ps.length, rate: n ? sum / n : null };
+}
+function fieldStats(ps){
+  const out = {};
+  ps.forEach(p => { const m = latest(p.id); (p.fields || []).forEach(f => { const o = out[f] = out[f] || { sum: 0, n: 0, all: 0 }; o.all++; if (m) { o.sum += SCORE[m]; o.n++; } }); });
+  return Object.entries(out).map(([f, o]) => ({ f, name: (field(f) || {}).name || "?", rate: o.n ? o.sum / o.n : null, all: o.all, n: o.n }))
+    .sort((a, b) => (a.rate == null ? 2 : a.rate) - (b.rate == null ? 2 : b.rate));
+}
+const pct = x => x == null ? "—" : Math.round(x * 100) + "%";
+function segHtml(s){
+  const w = k => s.total ? (s.c[k] / s.total * 100).toFixed(1) : 0;
+  return '<div class="seg"><i class="o" style="width:' + w("○") + '%"></i><i class="t" style="width:' + w("△") + '%"></i><i class="x" style="width:' + w("×") + '%"></i></div>' +
+    '<div class="legend"><span><b class="mk-o">○</b> ' + s.c["○"] + '</span><span><b class="mk-t">△</b> ' + s.c["△"] + '</span><span><b class="mk-x">×</b> ' + s.c["×"] + "</span><span>まだ " + s.c.none + "</span><span>正答率 <b>" + pct(s.rate) + "</b></span></div>";
+}
+
+/* ───── 範囲 ───── */
+const MODES = [["all", "すべて"], ["new", "まだの問題"], ["weak", "苦手(×△)"], ["rand", "ランダム10題"]];
+function rangeCard(r){
+  const ps = rangeProblems(r), s = stats(ps), b = book(r.book) || {}, mode = state.mode[r.id] || "weak";
+  const weak = ps.filter(p => ["×", "△"].includes(latest(p.id)));
+  const fs = fieldStats(ps).filter(x => x.n);
+  return '<div class="range-card" data-range="' + r.id + '"><h3><span>' + esc(r.name || b.name) + "</span><small>" + esc(b.name || "") + (r.from !== "" || r.to !== "" ? " " + esc(r.from) + "〜" + esc(r.to) : "") + " ・ " + ps.length + "題</small></h3>" +
+    segHtml(s) +
+    (weak.length ? '<div style="margin-top:.4rem;font-size:.82rem">苦手:' + weak.map(p => '<span class="mk-' + CLS[latest(p.id)] + '">' + esc(p.no) + "</span>").join(" ") + "</div>" : "") +
+    (fs.length ? '<div class="fields">' + fs.slice(0, 6).map(x => "<span>" + esc(x.name) + '</span><span class="fbar"><i style="width:' + Math.round(x.rate * 100) + '%"></i></span><span>' + pct(x.rate) + "</span>").join("") + "</div>" : "") +
+    '<div class="modes" role="group" aria-label="出し方">' + MODES.map(([k, l]) => '<button type="button" data-mode="' + r.id + ":" + k + '" aria-pressed="' + (mode === k) + '">' + l + "</button>").join("") + "</div>" +
+    '<div class="row" style="margin-top:.5rem"><button type="button" class="btn" data-start="' + r.id + '">テストを始める</button>' +
+    '<button type="button" class="linkbtn" data-range-del="' + r.id + '" style="margin-left:auto;color:var(--sub)">この範囲を消す</button></div></div>';
+}
+function rangeForm(){
+  const books = D().books;
+  if (!books.length) return '<div class="empty">まず「問題」のタブで教材と問題を足してください。</div>';
+  return '<div class="grid2"><div class="f"><label>教材</label><select id="rf-book">' + books.map(b => '<option value="' + b.id + '">' + esc(b.name) + "</option>").join("") + "</select></div>" +
+    '<div class="f"><label>番号(から)</label><input id="rf-from" type="number" placeholder="空なら最初から"></div><div class="f"><label>番号(まで)</label><input id="rf-to" type="number" placeholder="空なら最後まで"></div>' +
+    '<div class="f"><label>名前</label><input id="rf-name" placeholder="' + esc(ctx.label || "例:2学期の範囲") + '" value="' + esc(ctx.label || "") + '"></div></div>' +
+    '<div class="row" style="margin-top:.5rem"><button type="button" class="btn sm" id="rf-add">範囲を作る</button></div>';
+}
+function renderRange(){
+  const box = document.getElementById("range");
+  const rs = D().ranges.filter(r => !r.deleted);
+  if (ctx.page) {
+    const mine = rs.filter(r => r.page === ctx.page);
+    box.innerHTML = '<h1>' + esc(ctx.label || "この計画") + "の範囲</h1>" + (mine.length ? mine.map(rangeCard).join("") : "") +
+      '<div class="panel"><div class="panel-h">' + (mine.length ? "範囲を足す" : "このページの範囲を決める") + '</div><div class="panel-b">' + rangeForm() + "</div></div>";
+  } else {
+    box.innerHTML = "<h1>演習範囲</h1>" + (rs.length ? rs.map(rangeCard).join("") : '<div class="empty">まだ範囲がありません。</div>') +
+      '<div class="panel"><div class="panel-h">範囲を作る</div><div class="panel-b">' + rangeForm() + "</div></div>";
+  }
+}
+
+/* ───── テスト ───── */
+function startTest(rid){
+  const r = D().ranges.find(x => x.id === rid), ps = rangeProblems(r), mode = state.mode[rid] || "weak";
+  let pool = mode === "new" ? ps.filter(p => !latest(p.id)) : mode === "weak" ? ps.filter(p => ["×", "△"].includes(latest(p.id))) : ps.slice();
+  if (mode === "weak") pool.sort((a, b) => (latest(a.id) === "×" ? 0 : 1) - (latest(b.id) === "×" ? 0 : 1) || byNo(a, b));
+  if (mode === "rand") { const a = ps.slice(), out = []; while (a.length && out.length < 10) out.push(a.splice(rnd(a.length), 1)[0]); pool = out; }
+  if (!pool.length) { say(mode === "weak" ? "苦手な問題はありません。" : mode === "new" ? "まだの問題はありません。" : "問題がありません。", true); return; }
+  state.session = { rid, queue: pool.map(p => p.id), i: 0, results: {} };
+  say(""); show("test");
+}
+async function finishTest(){
+  const s = state.session; if (!s) return;
+  state.session = null;                         // 先に閉じる(保存のあとの描き直しで、もう一度終えないように)
+  const n = Object.keys(s.results).length;
+  if (n) {
+    const id = uid(), r = D().ranges.find(x => x.id === s.rid) || {};
+    const t = { id, date: today(), name: (r.name || "テスト") + " " + (D().tests.filter(x => x.range === s.rid).length + 1) + "回目", range: s.rid, results: s.results };
+    await commit(doc => { doc.tests.push(t); });
+    state.lastTest = id;
+  }
+  render(); show("test");
+}
+function renderTest(){
+  const box = document.getElementById("test"), s = state.session;
+  if (s) {
+    if (s.i >= s.queue.length) { box.innerHTML = '<p class="prog">保存しています…</p>'; return; }
+    const p = D().problems.find(x => x.id === s.queue[s.i]), b = book(p.book) || {}, h = history(p.id);
+    box.innerHTML = '<div class="panel"><div class="qcard"><div class="qbook">' + esc(b.name) + '</div><div class="qno">' + esc(p.no) + "</div>" +
+      '<div class="qfields">' + (p.fields || []).map(f => '<span class="tag">' + esc((field(f) || {}).name) + "</span>").join("") + "</div>" +
+      (h.length ? '<div class="qbook">これまで ' + h.slice(-5).map(x => '<span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join(" ") + "</div>" : '<div class="qbook">はじめて</div>') +
+      '<div class="judge"><button type="button" class="o" data-judge="○">○<small>解けた</small></button><button type="button" class="t" data-judge="△">△<small>あと一歩</small></button><button type="button" class="x" data-judge="×">×<small>方針が立たない</small></button></div></div></div>' +
+      '<p class="prog">' + (s.i + 1) + " / " + s.queue.length + '</p><div class="row" style="justify-content:center"><button type="button" class="btn ghost sm" data-skip>とばす</button><button type="button" class="btn ghost sm" data-stop>ここで終える</button></div>';
+    return;
+  }
+  const last = state.lastTest && D().tests.find(t => t.id === state.lastTest);
+  const sum = t => { const c = { "○": 0, "△": 0, "×": 0 }; Object.values(t.results).forEach(m => c[m]++); return c; };
+  box.innerHTML = (last ? '<div class="panel"><div class="panel-h">終わったテスト</div><div class="panel-b"><b>' + esc(last.name) + "</b>" +
+      (c => '<div class="legend" style="margin-top:.3rem"><span><b class="mk-o">○</b> ' + c["○"] + '</span><span><b class="mk-t">△</b> ' + c["△"] + '</span><span><b class="mk-x">×</b> ' + c["×"] + "</span></div>")(sum(last)) + "</div></div>" : "") +
+    '<div class="panel"><div class="panel-h">これまでのテスト</div><div class="panel-b">' + (D().tests.length ? D().tests.slice().reverse().slice(0, 30).map(t => { const c = sum(t);
+      return '<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--rule);padding:.25rem 0;font-size:.86rem"><span>' + esc(t.date.slice(5).replace("-", "/")) + " " + esc(t.name) + '</span><span><span class="mk-o">○' + c["○"] + '</span> <span class="mk-t">△' + c["△"] + '</span> <span class="mk-x">×' + c["×"] + "</span></span></div>"; }).join("")
+      : '<div class="empty">まだありません。範囲のタブから始めます。</div>') + "</div></div>";
+}
+
+/* ───── 問題 ───── */
+function renderProbs(){
+  const box = document.getElementById("probs"), books = D().books;
+  if (!state.sel.book || !book(state.sel.book)) state.sel.book = books[0] ? books[0].id : null;
+  const b = book(state.sel.book), ps = b ? D().problems.filter(p => p.book === b.id && !p.deleted).sort(byNo) : [];
+  const sp = state.sel.prob && D().problems.find(p => p.id === state.sel.prob);
+  box.innerHTML = "<h1>問題</h1>" +
+    '<div class="panel"><div class="panel-h">教材</div><div class="panel-b"><div class="row">' + (books.length ? '<select id="pb-book">' + books.map(x => '<option value="' + x.id + '"' + (b && x.id === b.id ? " selected" : "") + ">" + esc(x.name) + "</option>").join("") + "</select>" : '<span class="empty">まだありません。</span>') +
+      '<input id="pb-newbook" placeholder="新しい教材の名前" style="flex:1;min-width:10rem;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem"><button type="button" class="btn sm" id="pb-addbook">教材を足す</button></div></div></div>' +
+    (b ? '<div class="panel"><div class="panel-h"><span>' + esc(b.name) + " ・ " + ps.length + '題</span></div><div class="panel-b">' +
+      (ps.length ? '<div class="plist">' + ps.map(p => { const h = history(p.id), m = h.length ? h[h.length - 1].mark : null;
+        return '<button type="button" class="pcell' + (m ? " " + CLS[m] : "") + '" data-prob="' + p.id + '"><b>' + esc(p.no) + '</b><span class="hist">' + (h.slice(-3).map(x => '<span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join("") || "—") + "</span></button>"; }).join("") + "</div>" : '<div class="empty">まだ問題がありません。</div>') +
+      '<div class="row" style="margin-top:.7rem"><input id="pb-nos" placeholder="番号(例:1-40、41、例題3)" style="flex:1;min-width:10rem;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem">' +
+      '<button type="button" class="btn sm" id="pb-addprobs">問題を足す</button></div>' +
+      '<div class="empty" style="margin-top:.3rem">分野を付けて足すなら、下で分野を選んでから「問題を足す」。</div><div class="chips" id="pb-addfields" style="margin-top:.3rem">' + D().fields.map(f => '<label><input type="checkbox" value="' + f.id + '"> ' + esc(f.name) + "</label>").join("") + "</div></div></div>" : "") +
+    (sp ? '<div class="panel"><div class="panel-h"><span>' + esc((book(sp.book) || {}).name) + " " + esc(sp.no) + '</span><button type="button" class="linkbtn" data-prob-close>閉じる</button></div><div class="panel-b">' +
+      '<div class="f"><label>分野・形式</label></div><div class="chips">' + D().fields.map(f => '<label><input type="checkbox" data-pf="' + f.id + '"' + ((sp.fields || []).includes(f.id) ? " checked" : "") + "> " + esc(f.name) + "</label>").join("") + "</div>" +
+      '<div style="margin-top:.5rem;font-size:.86rem">これまで:' + (history(sp.id).map(x => esc(x.date.slice(5).replace("-", "/")) + ' <span class="mk-' + CLS[x.mark] + '">' + x.mark + "</span>").join("、") || "まだ") + "</div>" +
+      '<div class="row" style="margin-top:.6rem"><button type="button" class="linkbtn" data-prob-del style="color:var(--ng)">この問題を消す</button></div></div></div>' : "") +
+    '<div class="panel"><div class="panel-h">分野・形式</div><div class="panel-b"><div class="chips">' + (D().fields.map(f => '<span class="tag">' + esc(f.name) + "</span>").join("") || '<span class="empty">まだありません。</span>') + "</div>" +
+      '<div class="row" style="margin-top:.5rem"><input id="pb-newfield" placeholder="例:微分・整数・証明" style="flex:1;border:1px solid var(--rule);border-radius:4px;padding:.35rem .5rem"><button type="button" class="btn sm" id="pb-addfield">分野を足す</button></div></div></div>';
+}
+// 「1-40、41、例題3」を番号の並びに
+function parseNos(t){
+  const out = [];
+  String(t).split(/[、,，\s]+/).filter(Boolean).forEach(x => { const m = /^(\d+)\s*[-〜~]\s*(\d+)$/.exec(x); if (m) { for (let i = +m[1]; i <= +m[2] && out.length < 1000; i++) out.push(String(i)); } else out.push(x); });
+  return out;
+}
+
+/* ───── 描画と操作 ───── */
+function render(){ if (!D()) return; renderRange(); renderTest(); renderProbs(); }
+function show(v){
+  state.view = v;
+  document.querySelectorAll(".view").forEach(el => el.hidden = el.id !== "view-" + v);
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+  if (D()) { if (v === "test") renderTest(); if (v === "range") renderRange(); if (v === "probs") renderProbs(); }
+}
+function bind(){
+  document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+  document.getElementById("range").addEventListener("click", async e => {
+    let b;
+    if ((b = e.target.closest("[data-mode]"))) { const [rid, k] = b.dataset.mode.split(":"); state.mode[rid] = k; renderRange(); return; }
+    if ((b = e.target.closest("[data-start]"))) { startTest(b.dataset.start); return; }
+    if ((b = e.target.closest("[data-range-del]"))) { if (!confirm("この範囲を消しますか。問題とテストの記録は残ります。")) return; const id = b.dataset.rangeDel; await commit(doc => { doc.ranges.find(r => r.id === id).deleted = today(); }); return; }
+    if (e.target.id === "rf-add") {
+      const v = id => document.getElementById(id).value.trim(), bk = v("rf-book");
+      const r = { id: uid(), book: bk, from: v("rf-from"), to: v("rf-to"), name: v("rf-name") || (book(bk) || {}).name, created: today() };
+      if (ctx.page) Object.assign(r, { page: ctx.page, label: ctx.label, tag: ctx.tag });
+      await commit(doc => { doc.ranges.push(r); }); say("範囲を作りました");
+    }
+  });
+  document.getElementById("test").addEventListener("click", async e => {
+    const s = state.session; let b;
+    if (s && (b = e.target.closest("[data-judge]"))) { s.results[s.queue[s.i]] = b.dataset.judge; s.i++; if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
+    if (s && e.target.closest("[data-skip]")) { s.i++; if (s.i >= s.queue.length) await finishTest(); else renderTest(); return; }
+    if (s && e.target.closest("[data-stop]")) { await finishTest(); return; }
+  });
+  document.getElementById("probs").addEventListener("change", async e => {
+    if (e.target.id === "pb-book") { state.sel.book = e.target.value; state.sel.prob = null; renderProbs(); return; }
+    const pf = e.target.closest("[data-pf]");
+    if (pf) { const id = state.sel.prob, f = pf.dataset.pf, on = pf.checked; await commit(doc => { const p = doc.problems.find(x => x.id === id); p.fields = (p.fields || []).filter(x => x !== f).concat(on ? [f] : []); }); }
+  });
+  document.getElementById("probs").addEventListener("click", async e => {
+    let b; const v = id => (document.getElementById(id) || {}).value || "";
+    if (e.target.id === "pb-addbook") { const n = v("pb-newbook").trim(); if (!n) return; const id = uid(); await commit(doc => { doc.books.push({ id, name: n, created: today() }); }); state.sel.book = id; renderProbs(); return; }
+    if (e.target.id === "pb-addfield") { const n = v("pb-newfield").trim(); if (!n || D().fields.some(f => f.name === n)) return; await commit(doc => { doc.fields.push({ id: uid(), name: n }); }); return; }
+    if (e.target.id === "pb-addprobs") {
+      const bk = state.sel.book, nos = parseNos(v("pb-nos")); if (!bk || !nos.length) return;
+      const fs = Array.from(document.querySelectorAll("#pb-addfields input:checked")).map(x => x.value);
+      const have = new Set(D().problems.filter(p => p.book === bk && !p.deleted).map(p => String(p.no)));
+      const add = nos.filter(n => !have.has(n));
+      await commit(doc => { add.forEach(n => doc.problems.push({ id: uid() + n, book: bk, no: n, fields: fs.slice() })); });
+      say(add.length + "題足しました" + (nos.length > add.length ? "(" + (nos.length - add.length) + "題はもうありました)" : "")); return;
+    }
+    if ((b = e.target.closest("[data-prob]"))) { state.sel.prob = b.dataset.prob; renderProbs(); return; }
+    if (e.target.closest("[data-prob-close]")) { state.sel.prob = null; renderProbs(); return; }
+    if (e.target.closest("[data-prob-del]")) { if (!confirm("この問題を消しますか。")) return; const id = state.sel.prob; await commit(doc => { doc.problems.find(p => p.id === id).deleted = today(); }); state.sel.prob = null; renderProbs(); return; }
+  });
+  document.getElementById("connect").addEventListener("click", async () => {
+    const v = id => document.getElementById(id).value.trim();
+    state.conn = { owner: v("c-owner"), repo: v("c-repo"), branch: v("c-branch") || "main", token: v("c-token") };
+    lsSet(KEY_CONN, state.conn); document.getElementById("conn-status").textContent = (await load()) ? "読み込みました" : "";
+    if (D()) show("range");
+  });
+}
+function boot(){
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+  if (ctx.page) document.body.classList.add("embed");
+  bind();
+  document.getElementById("ver").textContent = "版 " + APP_VERSION;
+  // 接続:自分のものが無ければ、同じ端末の行軍表・省・思案のものを使う
+  const c = lsGet(KEY_CONN, null) || lsGet("roadmap-conn", null) || lsGet("sho-conn", null) || lsGet("shian-conn", null);
+  document.getElementById("c-owner").value = c ? c.owner : "nisenonamae";
+  document.getElementById("c-repo").value = c ? c.repo : "notion-daily";
+  document.getElementById("c-branch").value = c ? (c.branch || "main") : "main";
+  document.getElementById("c-token").value = c ? c.token : "";
+  const cache = lsGet(KEY_CACHE, null);
+  if (cache && cache.doc) { state.doc = Object.assign(emptyDoc(), cache.doc); state.sha = cache.sha; render(); }
+  if (c && c.token) { state.conn = c; load(); } else show("settings");
+}
+window.__mr = { state, rangeProblems, stats, latest, parseNos };
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+})();
+</script>
+</body>
+</html>
